@@ -963,7 +963,7 @@ def restore_from_json(json_data):
         print(f"   - お知らせ（新規＋更新）: {restored_counts['forms']}件")
         print(f"   - プロトコル（新規＋更新）: {restored_counts['protocols']}件")
 
-        return True, restored_counts
+    return True, restored_counts
 
 def is_admin_user():
     """現在のユーザーが管理者かどうかチェック"""
@@ -2898,4 +2898,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
