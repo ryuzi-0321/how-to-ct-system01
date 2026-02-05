@@ -814,154 +814,155 @@ How to CT Medical System - データバックアップ
         return None, f"バックアップファイル作成中にエラーが発生しました: {str(e)}"
 
 def restore_from_json(json_data):
-    """JSONデータから復元（完全置換モード）"""
+    """JSONデータから復元（既存データとマージ／更新モード）"""
     try:
         conn = sqlite3.connect('medical_ct.db')
+        # カラム名でアクセスできるようにしておく（将来の拡張に備えた設定）
+        conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
-        
-        # 復元開始
+
+        # 復元サマリー用カウンタ
         restored_counts = {
             'sicks': 0,
             'forms': 0,
             'protocols': 0,
+            # 今後もインターフェース互換のために残しておくが、
+            # 「完全削除」は行わないので 0 のままにしておく
             'deleted_sicks': 0,
             'deleted_forms': 0,
             'deleted_protocols': 0
         }
-        
-        # 移行タイプをチェック
+
+        # 移行タイプをチェック（Laravel 側エクスポート情報）
         migration_type = json_data.get('export_info', {}).get('migration_type', 'unknown')
-        
+
         if migration_type == 'complete_replacement':
-            print("🔄 完全置換モードで復元開始...")
-            
-            # 既存データの件数を記録
-            cursor.execute('SELECT COUNT(*) FROM sicks')
-            restored_counts['deleted_sicks'] = cursor.fetchone()[0]
-            
-            cursor.execute('SELECT COUNT(*) FROM forms')
-            restored_counts['deleted_forms'] = cursor.fetchone()[0]
-            
-            cursor.execute('SELECT COUNT(*) FROM protocols')
-            restored_counts['deleted_protocols'] = cursor.fetchone()[0]
-            
-            print(f"📊 削除予定データ - 疾患:{restored_counts['deleted_sicks']}件, お知らせ:{restored_counts['deleted_forms']}件, プロトコル:{restored_counts['deleted_protocols']}件")
-            
-            # 既存データを完全削除（ユーザーデータとセッションは保持）
-            print("🗑️ 既存データを削除中...")
-            cursor.execute('DELETE FROM sicks')
-            cursor.execute('DELETE FROM forms') 
-            cursor.execute('DELETE FROM protocols')
-            
-            print("✅ 既存データ削除完了")
+            # 以前はここで DELETE していたが、既存データを保持するために
+            # 「既存データを残したまま UPSERT（INSERT OR REPLACE）」に仕様変更
+            print("🔄 既存データを保持しつつ、重複レコードを更新（UPSERT）モードで復元開始...")
         else:
-            print("➕ 追加モードで復元開始...")
-        
-        # 疾患データの投入
+            print("➕ 追加／更新モードで復元開始...")
+
+        # --- 疾患データ（sicks）の復元（マージ＆更新） ---
         if 'sicks' in json_data and json_data['sicks']:
             print(f"📋 Laravel版疾患データを投入中... ({len(json_data['sicks'])}件)")
-            
+
             for i, sick in enumerate(json_data['sicks']):
                 try:
-                    cursor.execute('''
-                        INSERT INTO sicks (
-                            diesease, diesease_text, keyword, protocol, protocol_text,
+                    cursor.execute(
+                        '''
+                        INSERT OR REPLACE INTO sicks (
+                            id, diesease, diesease_text, keyword, protocol, protocol_text,
                             processing, processing_text, contrast, contrast_text,
-                            diesease_img, protocol_img, processing_img, contrast_img
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    ''', (
-                        sick.get('diesease', ''),
-                        sick.get('diesease_text', ''),
-                        sick.get('keyword', ''),
-                        sick.get('protocol', ''),
-                        sick.get('protocol_text', ''),
-                        sick.get('processing', ''),
-                        sick.get('processing_text', ''),
-                        sick.get('contrast', ''),
-                        sick.get('contrast_text', ''),
-                        '',  # 画像データは空文字
-                        '',  # 画像データは空文字
-                        '',  # 画像データは空文字
-                        ''   # 画像データは空文字
-                    ))
+                            diesease_img, protocol_img, processing_img, contrast_img,
+                            created_at, updated_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ''',
+                        (
+                            sick.get('id', None),
+                            sick.get('diesease', ''),
+                            sick.get('diesease_text', ''),
+                            sick.get('keyword', ''),
+                            sick.get('protocol', ''),
+                            sick.get('protocol_text', ''),
+                            sick.get('processing', ''),
+                            sick.get('processing_text', ''),
+                            sick.get('contrast', ''),
+                            sick.get('contrast_text', ''),
+                            '',  # 画像データは空文字のまま
+                            '',  # 画像データは空文字のまま
+                            '',  # 画像データは空文字のまま
+                            '',  # 画像データは空文字のまま
+                            sick.get('created_at', ''),
+                            sick.get('updated_at', '')
+                        )
+                    )
                     restored_counts['sicks'] += 1
-                    
+
                     # 進捗表示
                     if (i + 1) % 10 == 0 or (i + 1) == len(json_data['sicks']):
                         print(f"   進捗: {i + 1}/{len(json_data['sicks'])}件")
-                        
+
                 except sqlite3.Error as e:
                     print(f"   ⚠️ 疾患データスキップ: {sick.get('diesease', 'Unknown')} - {e}")
-            
-            print(f"✅ 疾患データ投入完了: {restored_counts['sicks']}件")
-        
-        # お知らせデータの投入
+
+            print(f"✅ 疾患データ投入完了: {restored_counts['sicks']}件（新規＋更新）")
+
+        # --- お知らせデータ（forms）の復元（マージ＆更新） ---
         if 'forms' in json_data and json_data['forms']:
             print(f"📢 Laravel版お知らせデータを投入中... ({len(json_data['forms'])}件)")
-            
+
             for i, form in enumerate(json_data['forms']):
                 try:
-                    cursor.execute('''
-                        INSERT INTO forms (title, main, post_img)
-                        VALUES (?, ?, ?)
-                    ''', (
-                        form.get('title', ''),
-                        form.get('main', ''),
-                        ''  # 画像データは空文字
-                    ))
+                    cursor.execute(
+                        '''
+                        INSERT OR REPLACE INTO forms (
+                            id, title, main, post_img, created_at, updated_at
+                        ) VALUES (?, ?, ?, ?, ?, ?)
+                        ''',
+                        (
+                            form.get('id', None),
+                            form.get('title', ''),
+                            form.get('main', ''),
+                            '',  # 画像データは空文字のまま
+                            form.get('created_at', ''),
+                            form.get('updated_at', '')
+                        )
+                    )
                     restored_counts['forms'] += 1
-                    
+
                     # 進捗表示
                     if (i + 1) % 5 == 0 or (i + 1) == len(json_data['forms']):
                         print(f"   進捗: {i + 1}/{len(json_data['forms'])}件")
-                        
+
                 except sqlite3.Error as e:
                     print(f"   ⚠️ お知らせデータスキップ: {form.get('title', 'Unknown')} - {e}")
-            
-            print(f"✅ お知らせデータ投入完了: {restored_counts['forms']}件")
-        
-        # CTプロトコルデータの投入
+
+            print(f"✅ お知らせデータ投入完了: {restored_counts['forms']}件（新規＋更新）")
+
+        # --- CTプロトコルデータ（protocols）の復元（マージ＆更新） ---
         if 'protocols' in json_data and json_data['protocols']:
             print(f"🔧 Laravel版プロトコルデータを投入中... ({len(json_data['protocols'])}件)")
-            
+
             for i, protocol in enumerate(json_data['protocols']):
                 try:
-                    cursor.execute('''
-                        INSERT INTO protocols (category, title, content, protocol_img)
-                        VALUES (?, ?, ?, ?)
-                    ''', (
-                        protocol.get('category', ''),
-                        protocol.get('title', ''),
-                        protocol.get('content', ''),
-                        ''  # 画像データは空文字
-                    ))
+                    cursor.execute(
+                        '''
+                        INSERT OR REPLACE INTO protocols (
+                            id, category, title, content, protocol_img, created_at, updated_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                        ''',
+                        (
+                            protocol.get('id', None),
+                            protocol.get('category', ''),
+                            protocol.get('title', ''),
+                            protocol.get('content', ''),
+                            '',  # 画像データは空文字のまま
+                            protocol.get('created_at', ''),
+                            protocol.get('updated_at', '')
+                        )
+                    )
                     restored_counts['protocols'] += 1
-                    
+
                     # 進捗表示
                     if (i + 1) % 5 == 0 or (i + 1) == len(json_data['protocols']):
                         print(f"   進捗: {i + 1}/{len(json_data['protocols'])}件")
-                        
+
                 except sqlite3.Error as e:
                     print(f"   ⚠️ プロトコルデータスキップ: {protocol.get('title', 'Unknown')} - {e}")
-            
-            print(f"✅ プロトコルデータ投入完了: {restored_counts['protocols']}件")
-        
+
+            print(f"✅ プロトコルデータ投入完了: {restored_counts['protocols']}件（新規＋更新）")
+
         # コミットして終了
         conn.commit()
         conn.close()
-        
-        print("\n🎉 データ移行完了！")
+
+        print("\n🎉 データ移行完了！（マージ／更新モード）")
         print(f"📊 復元サマリー:")
-        print(f"   - 疾患データ: {restored_counts['sicks']}件")
-        print(f"   - お知らせ: {restored_counts['forms']}件")
-        print(f"   - プロトコル: {restored_counts['protocols']}件")
-        
-        if migration_type == 'complete_replacement':
-            print(f"📋 削除されたデータ:")
-            print(f"   - 疾患データ: {restored_counts['deleted_sicks']}件")
-            print(f"   - お知らせ: {restored_counts['deleted_forms']}件") 
-            print(f"   - プロトコル: {restored_counts['deleted_protocols']}件")
-        
+        print(f"   - 疾患データ（新規＋更新）: {restored_counts['sicks']}件")
+        print(f"   - お知らせ（新規＋更新）: {restored_counts['forms']}件")
+        print(f"   - プロトコル（新規＋更新）: {restored_counts['protocols']}件")
+
         return True, restored_counts
         
     except Exception as e:
@@ -2904,3 +2905,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
