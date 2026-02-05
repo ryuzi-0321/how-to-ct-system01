@@ -963,7 +963,14 @@ def restore_from_json(json_data):
         print(f"   - お知らせ（新規＋更新）: {restored_counts['forms']}件")
         print(f"   - プロトコル（新規＋更新）: {restored_counts['protocols']}件")
 
-    return True, restored_counts
+        return True, restored_counts
+
+    except Exception as e:
+        if 'conn' in locals():
+            conn.rollback()
+            conn.close()
+        print(f"❌ 復元エラー: {e}")
+        return False, f"復元中にエラーが発生しました: {str(e)}"
 
 def is_admin_user():
     """現在のユーザーが管理者かどうかチェック"""
@@ -2898,5 +2905,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
