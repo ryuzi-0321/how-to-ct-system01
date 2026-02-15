@@ -31,11 +31,10 @@ st.set_page_config(
 )
 
 # プロジェクトフォルダの直下に作る場合
-db_path = "C:/medical_ct_app/medical_ct.db"
-if not os.path.exists("C:/medical_ct_app"):
-    os.makedirs("C:/medical_ct_app")
-# デスクトップのパス（ご自身のユーザー名に変えてください）
-url = "sqlite:///C:/medical_ct_app/medical_ct.db"
+db_folder = "C:/medical_ct_app"
+db_path = os.path.join(db_folder, "medical_ct.db")
+if not os.path.exists(db_folder):
+    os.makedirs(db_folder)
 
 # 接続を試みる（ファイルがなければここで作られる）
 try:
@@ -44,6 +43,19 @@ try:
     st.sidebar.success("DB Connected")
 except Exception as e:
     st.error(f"エラーが発生しました: {e}")
+
+# テスト用：このボタンを押してファイルができるか確認してください
+if st.button("強制的にテストデータを作成"):
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute('CREATE TABLE IF NOT EXISTS test (id INTEGER)')
+        cursor.execute('INSERT INTO test (id) VALUES (1)')
+        conn.commit()
+        conn.close()
+        st.success("書き込み完了！フォルダを確認してください。")
+    except Exception as e:
+        st.error(f"書き込みエラー: {e}")
 
 def save_session_to_db(user_id, session_data):
     """セッション情報をデータベースに保存"""
@@ -2922,6 +2934,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
