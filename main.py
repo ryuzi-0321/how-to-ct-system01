@@ -54,6 +54,8 @@ if st.button("強制的にテストデータを作成"):
         conn.commit()
         conn.close()
         st.success("書き込み完了！フォルダを確認してください。")
+        # テストボタンの中にこれを追加
+        st.write(f"実際に書き込んだ場所: {os.path.abspath(db_path)}")
     except Exception as e:
         st.error(f"書き込みエラー: {e}")
 
@@ -2934,6 +2936,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
