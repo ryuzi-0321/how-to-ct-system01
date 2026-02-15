@@ -31,7 +31,9 @@ st.set_page_config(
 )
 
 # プロジェクトフォルダの直下に作る場合
-db_path = "medical_ct.db" 
+db_path = "C:/medical_ct_app/medical_ct.db"
+if not os.path.exists("C:/medical_ct_app"):
+    os.makedirs("C:/medical_ct_app")
 # デスクトップのパス（ご自身のユーザー名に変えてください）
 url = "sqlite:///C:/medical_ct_app/medical_ct.db"
 
@@ -39,13 +41,14 @@ url = "sqlite:///C:/medical_ct_app/medical_ct.db"
 try:
     conn_db = sqlite3.connect(db_path)
     conn_db.close()
+    st.sidebar.success("DB Connected")
 except Exception as e:
     st.error(f"エラーが発生しました: {e}")
 
 def save_session_to_db(user_id, session_data):
     """セッション情報をデータベースに保存"""
     try:
-        conn = st.connection("sqlite", type="sql")
+        conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
         # セッションテーブルが存在しない場合は作成
@@ -73,7 +76,7 @@ def save_session_to_db(user_id, session_data):
 def load_session_from_db():
     """データベースからセッション情報を復元"""
     try:
-        conn = sqlite3.connect('medical_ct.db')
+        conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
         # セッションテーブルが存在するかチェック
@@ -117,7 +120,7 @@ def load_session_from_db():
 def get_user_by_id(user_id):
     """IDでユーザー情報を取得"""
     try:
-        conn = sqlite3.connect('medical_ct.db')
+        conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         cursor.execute("SELECT id, name, email FROM users WHERE id = ?", (user_id,))
         user = cursor.fetchone()
@@ -356,7 +359,7 @@ def validate_and_process_image(uploaded_file):
 # データベース初期化
 def init_database():
     """データベースとテーブルを初期化"""
-    conn = sqlite3.connect('medical_ct.db')
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     
     cursor.execute('''
@@ -430,7 +433,7 @@ def init_database():
 # 初期データ投入
 def insert_sample_data():
     """サンプルデータを挿入"""
-    conn = sqlite3.connect('medical_ct.db')
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     
     # サンプルユーザーデータ
@@ -495,7 +498,7 @@ def hash_password(password):
 
 def authenticate_user(email, password):
     """ユーザー認証"""
-    conn = sqlite3.connect('medical_ct.db')
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute("SELECT id, name, email FROM users WHERE email = ? AND password = ?", 
                    (email, hash_password(password)))
@@ -505,7 +508,7 @@ def authenticate_user(email, password):
 
 def register_user(name, email, password):
     """新規ユーザー登録"""
-    conn = sqlite3.connect('medical_ct.db')
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     try:
         cursor.execute("INSERT INTO users (name, email, password) VALUES (?, ?, ?)",
@@ -520,14 +523,14 @@ def register_user(name, email, password):
 # データベース操作関数
 def get_all_sicks():
     """全疾患データを取得"""
-    conn = sqlite3.connect('medical_ct.db')
+    conn = sqlite3.connect(db_path)
     df = pd.read_sql_query("SELECT * FROM sicks ORDER BY diesease", conn)
     conn.close()
     return df
 
 def search_sicks(search_term):
     """疾患データを検索"""
-    conn = sqlite3.connect('medical_ct.db')
+    conn = sqlite3.connect(db_path)
     query = """
         SELECT * FROM sicks 
         WHERE diesease LIKE ? OR diesease_text LIKE ? OR keyword LIKE ? 
@@ -543,7 +546,7 @@ def search_sicks(search_term):
 
 def get_sick_by_id(sick_id):
     """IDで疾患データを取得"""
-    conn = sqlite3.connect('medical_ct.db')
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM sicks WHERE id = ?", (sick_id,))
     sick = cursor.fetchone()
@@ -552,14 +555,14 @@ def get_sick_by_id(sick_id):
 
 def get_all_forms():
     """全お知らせを取得"""
-    conn = sqlite3.connect('medical_ct.db')
+    conn = sqlite3.connect(db_path)
     df = pd.read_sql_query("SELECT * FROM forms ORDER BY created_at DESC", conn)
     conn.close()
     return df
 
 def get_form_by_id(form_id):
     """IDでお知らせを取得"""
-    conn = sqlite3.connect('medical_ct.db')
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM forms WHERE id = ?", (form_id,))
     form = cursor.fetchone()
@@ -568,7 +571,7 @@ def get_form_by_id(form_id):
 
 def add_sick(diesease, diesease_text, keyword, protocol, protocol_text, processing, processing_text, contrast, contrast_text, diesease_img=None, protocol_img=None, processing_img=None, contrast_img=None):
     """新しい疾患データを追加"""
-    conn = sqlite3.connect('medical_ct.db')
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute('''
         INSERT INTO sicks (diesease, diesease_text, keyword, protocol, protocol_text, processing, processing_text, contrast, contrast_text, diesease_img, protocol_img, processing_img, contrast_img)
@@ -579,7 +582,7 @@ def add_sick(diesease, diesease_text, keyword, protocol, protocol_text, processi
 
 def add_form(title, main, post_img=None):
     """新しいお知らせを追加"""
-    conn = sqlite3.connect('medical_ct.db')
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute('INSERT INTO forms (title, main, post_img) VALUES (?, ?, ?)', (title, main, post_img))
     conn.commit()
@@ -587,7 +590,7 @@ def add_form(title, main, post_img=None):
 
 def update_sick(sick_id, diesease, diesease_text, keyword, protocol, protocol_text, processing, processing_text, contrast, contrast_text, diesease_img=None, protocol_img=None, processing_img=None, contrast_img=None):
     """疾患データを更新"""
-    conn = sqlite3.connect('medical_ct.db')
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute('''
         UPDATE sicks SET diesease=?, diesease_text=?, keyword=?, protocol=?, protocol_text=?, 
@@ -599,7 +602,7 @@ def update_sick(sick_id, diesease, diesease_text, keyword, protocol, protocol_te
 
 def update_form(form_id, title, main, post_img=None):
     """お知らせを更新"""
-    conn = sqlite3.connect('medical_ct.db')
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute('UPDATE forms SET title=?, main=?, post_img=?, updated_at=CURRENT_TIMESTAMP WHERE id=?', (title, main, post_img, form_id))
     conn.commit()
@@ -607,7 +610,7 @@ def update_form(form_id, title, main, post_img=None):
 
 def delete_form(form_id):
     """お知らせを削除"""
-    conn = sqlite3.connect('medical_ct.db')
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute('DELETE FROM forms WHERE id = ?', (form_id,))
     conn.commit()
@@ -615,7 +618,7 @@ def delete_form(form_id):
 
 def delete_sick(sick_id):
     """疾患データを削除"""
-    conn = sqlite3.connect('medical_ct.db')
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute('DELETE FROM sicks WHERE id = ?', (sick_id,))
     conn.commit()
@@ -623,21 +626,21 @@ def delete_sick(sick_id):
 
 def get_all_protocols():
     """全CTプロトコルを取得"""
-    conn = sqlite3.connect('medical_ct.db')
+    conn = sqlite3.connect(db_path)
     df = pd.read_sql_query("SELECT * FROM protocols ORDER BY category, title", conn)
     conn.close()
     return df
 
 def get_protocols_by_category(category):
     """カテゴリー別CTプロトコルを取得"""
-    conn = sqlite3.connect('medical_ct.db')
+    conn = sqlite3.connect(db_path)
     df = pd.read_sql_query("SELECT * FROM protocols WHERE category = ? ORDER BY title", conn, params=[category])
     conn.close()
     return df
 
 def search_protocols(search_term):
     """CTプロトコルを検索"""
-    conn = sqlite3.connect('medical_ct.db')
+    conn = sqlite3.connect(db_path)
     query = """
         SELECT * FROM protocols 
         WHERE title LIKE ? OR content LIKE ? OR category LIKE ?
@@ -651,7 +654,7 @@ def search_protocols(search_term):
 
 def get_protocol_by_id(protocol_id):
     """IDでCTプロトコルを取得"""
-    conn = sqlite3.connect('medical_ct.db')
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM protocols WHERE id = ?", (protocol_id,))
     protocol = cursor.fetchone()
@@ -660,7 +663,7 @@ def get_protocol_by_id(protocol_id):
 
 def add_protocol(category, title, content, protocol_img=None):
     """新しいCTプロトコルを追加"""
-    conn = sqlite3.connect('medical_ct.db')
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute('''
         INSERT INTO protocols (category, title, content, protocol_img)
@@ -671,7 +674,7 @@ def add_protocol(category, title, content, protocol_img=None):
 
 def update_protocol(protocol_id, category, title, content, protocol_img=None):
     """CTプロトコルを更新"""
-    conn = sqlite3.connect('medical_ct.db')
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute('''
         UPDATE protocols SET category=?, title=?, content=?, protocol_img=?, updated_at=CURRENT_TIMESTAMP
@@ -682,7 +685,7 @@ def update_protocol(protocol_id, category, title, content, protocol_img=None):
 
 def delete_protocol(protocol_id):
     """CTプロトコルを削除"""
-    conn = sqlite3.connect('medical_ct.db')
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute('DELETE FROM protocols WHERE id = ?', (protocol_id,))
     conn.commit()
@@ -690,7 +693,7 @@ def delete_protocol(protocol_id):
 
 def export_all_data():
     """全データをJSONでエクスポート"""
-    conn = sqlite3.connect('medical_ct.db')
+    conn = sqlite3.connect(db_path)
     
     # 全テーブルのデータを取得
     data = {
@@ -828,7 +831,7 @@ How to CT Medical System - データバックアップ
 def restore_from_json(json_data):
     """JSONデータから復元（既存データとマージ／更新モード）"""
     try:
-        conn = sqlite3.connect('medical_ct.db')
+        conn = sqlite3.connect(db_path)
         # カラム名でアクセスできるようにしておく（将来の拡張に備えた設定）
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
@@ -1027,14 +1030,14 @@ def validate_email(email):
 
 def get_all_users():
     """全ユーザー情報を取得（管理者用）"""
-    conn = sqlite3.connect('medical_ct.db')
+    conn = sqlite3.connect(db_path)
     df = pd.read_sql_query("SELECT id, name, email, created_at FROM users ORDER BY created_at DESC", conn)
     conn.close()
     return df
 
 def delete_user(user_id):
     """ユーザーを削除（管理者用）"""
-    conn = sqlite3.connect('medical_ct.db')
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute('DELETE FROM users WHERE id = ?', (user_id,))
     conn.commit()
@@ -2849,7 +2852,7 @@ def main():
     # データベース初期化
     init_database()
       # 既存ユーザーを一度クリア（一回だけ実行）
-    # conn = sqlite3.connect('medical_ct.db')
+    # conn = sqlite3.connect(db_path)
     # cursor = conn.cursor()
     # cursor.execute("DELETE FROM users")
     # conn.commit()
@@ -2917,6 +2920,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
