@@ -30,6 +30,8 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# プロジェクトフォルダの直下に作る場合
+db_path = "medical_ct.db" 
 # デスクトップのパス（ご自身のユーザー名に変えてください）
 url = "sqlite:///C:/medical_ct_app/medical_ct.db"
 
@@ -2919,6 +2921,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
