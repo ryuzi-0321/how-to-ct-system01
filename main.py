@@ -31,9 +31,6 @@ st.set_page_config(
 )
 
 # デスクトップのパス（ご自身のユーザー名に変えてください）
-# .streamlit/secrets.toml
-[connections.sqlite]
-# 一番エラーが起きにくい形式（スラッシュ3つ + Cドライブ直下）
 url = "sqlite:///C:/medical_ct_app/medical_ct.db"
 
 # 接続を試みる（ファイルがなければここで作られる）
@@ -2922,6 +2919,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
