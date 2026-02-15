@@ -71,6 +71,7 @@ def save_session_to_db(user_id, session_data):
         conn.close()
         return True
     except Exception as e:
+        st.error(f"保存失敗: {e}") # エラー時は画面に表示
         return False
 
 def load_session_from_db():
@@ -115,6 +116,7 @@ def load_session_from_db():
         
         return None
     except Exception as e:
+        st.error(f"保存失敗: {e}") # エラー時は画面に表示
         return None
 
 def get_user_by_id(user_id):
@@ -2920,6 +2922,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
