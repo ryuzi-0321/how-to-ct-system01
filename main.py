@@ -30,6 +30,20 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# デスクトップのパス（ご自身のユーザー名に変えてください）
+db_path = "C:/Users/Administrator/Desktop/medical_ct.db"
+
+# 接続を試みる（ファイルがなければここで作られる）
+try:
+    conn_db = sqlite3.connect(db_path)
+    conn_db.close()
+    if os.path.exists(db_path):
+        st.success(f"成功！デスクトップにDBが作成されました：{db_path}")
+    else:
+        st.error("ファイルが作られませんでした。パスを確認してください。")
+except Exception as e:
+    st.error(f"エラーが発生しました: {e}")
+
 def save_session_to_db(user_id, session_data):
     """セッション情報をデータベースに保存"""
     try:
@@ -2905,6 +2919,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
