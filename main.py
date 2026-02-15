@@ -33,7 +33,7 @@ st.set_page_config(
 def save_session_to_db(user_id, session_data):
     """セッション情報をデータベースに保存"""
     try:
-        conn = sqlite3.connect('medical_ct.db')
+        conn = st.connection("sqlite", type="sql")
         cursor = conn.cursor()
         
         # セッションテーブルが存在しない場合は作成
@@ -2905,6 +2905,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
